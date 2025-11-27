@@ -37,3 +37,155 @@ p {
   color: #444;
   margin-bottom: 1rem;
 }
+
+/* =========================================
+   INTERACTIVE ELEMENTS — LINKS & BUTTONS
+========================================= */
+
+/* Links (all <a> tags) */
+a {
+  color: #2563eb;                /* default blue */
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+a:hover,
+a:focus {
+  color: #1d4ed8;                /* darker blue on hover/focus */
+  text-decoration: underline;
+}
+
+a:active {
+  color: #1e3a8a;                /* deepest blue when active (pressed) */
+}
+
+/* Primary buttons (Bootstrap + custom) */
+.btn,
+.btn-primary,
+.btn-outline-primary,
+.btn-get-started {
+  background: #2563eb;           /* default button color */
+  border-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 999px;          /* pill shape */
+  padding: 0.55rem 1.4rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
+}
+
+.btn:hover,
+.btn-primary:hover,
+.btn-outline-primary:hover,
+.btn-get-started:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn:active,
+.btn-primary:active,
+.btn-outline-primary:active,
+.btn-get-started:active {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.45);
+  transform: translateY(0);
+}
+
+/* Keep focus visible for accessibility */
+.btn:focus-visible,
+a:focus-visible {
+  outline: 2px solid #f97316;   /* orange focus ring */
+  outline-offset: 3px;
+}
+
+/* =========================================
+   STEP 3 — SPACING SCALE & SURFACES
+========================================= */
+
+/* Spacing scale */
+.space-sm { padding: 1rem; }
+.space-md { padding: 2rem; }
+.space-lg { padding: 3rem; }
+
+/* Section styling (surfaces) */
+.section-surface {
+  background-color: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* =========================================
+   STEP 4 — COMPONENTS RESTYLED (APPEARANCE)
+========================================= */
+
+/* 1) HEADER / NAVBAR ---------------------------------- */
+
+#header {
+  background: rgba(15, 23, 42, 0.94);         /* dark navy with slight transparency */
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.45);
+}
+
+#header .logo a,
+#header .logo span {
+  color: #f9fafb;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Nav links inside the navbar */
+#navbar ul li a {
+  padding: 0.6rem 1rem;
+  border-radius: 999px;                        /* pill shape for nav pills */
+  color: #e5e7eb;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Hover / active nav state */
+#navbar ul li a:hover,
+#navbar ul li a:focus,
+#navbar ul li .active {
+  background-color: #2563eb;                   /* blue pill */
+  color: #f9fafb;
+}
+
+/* 2) BACK-TO-TOP BUTTON ------------------------------ */
+
+.scroll-top {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.6);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+/* Hover state */
+.scroll-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.75);
+}
+
+/* Active (pressed) state */
+.scroll-top:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.7);
+}
