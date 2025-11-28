@@ -189,21 +189,21 @@ a:focus-visible {
   transform: translateY(0);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.7);
 }
-/* ---- Keep sidebar visible on tablets & laptops ---- */
-@media (min-width: 768px) and (max-width: 1199px) {
-  /* show the header sidebar */
+/* ---- Always show sidebar on all screen sizes ---- */
+@media (max-width: 1199px) {
+  /* show the sidebar instead of sliding it off-screen */
   #header {
-    left: 0;          /* override main.css which moves it off-screen */
-    width: 260px;     /* a bit narrower than 300px to save space */
+    left: 0 !important;      /* override main.css */
+    width: 260px;
   }
 
-  /* push the main content to the right so it doesn't go under the sidebar */
+  /* push main content to the right so it doesn't sit under the sidebar */
   #header ~ main {
     margin-left: 260px;
   }
 
-  /* hide the round toggle button – we don't need it when sidebar is visible */
+  /* hide the round toggle button – not needed if sidebar is always visible */
   #header .header-toggle {
-    display: none;
+    display: none !important;
   }
 }
