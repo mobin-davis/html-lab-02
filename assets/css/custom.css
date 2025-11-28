@@ -147,7 +147,7 @@ a:focus-visible {
 }
 
 /* Nav links inside the navbar */
-#navbar ul li a {
+#navmenu ul li a {
   padding: 0.6rem 1rem;
   border-radius: 999px;                        /* pill shape for nav pills */
   color: #e5e7eb;
@@ -155,9 +155,9 @@ a:focus-visible {
 }
 
 /* Hover / active nav state */
-#navbar ul li a:hover,
-#navbar ul li a:focus,
-#navbar ul li .active {
+#navmenu ul li a:hover,
+#navmenu ul li a:focus,
+#navmenu ul li .active {
   background-color: #2563eb;                   /* blue pill */
   color: #f9fafb;
 }
