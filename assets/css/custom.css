@@ -189,3 +189,21 @@ a:focus-visible {
   transform: translateY(0);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.7);
 }
+/* ---- Keep sidebar visible on tablets & laptops ---- */
+@media (min-width: 768px) and (max-width: 1199px) {
+  /* show the header sidebar */
+  #header {
+    left: 0;          /* override main.css which moves it off-screen */
+    width: 260px;     /* a bit narrower than 300px to save space */
+  }
+
+  /* push the main content to the right so it doesn't go under the sidebar */
+  #header ~ main {
+    margin-left: 260px;
+  }
+
+  /* hide the round toggle button – we don't need it when sidebar is visible */
+  #header .header-toggle {
+    display: none;
+  }
+}
