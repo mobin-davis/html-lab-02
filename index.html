@@ -26,7 +26,8 @@
 
   <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
-  <!--link href="assets/css/custom.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/custom.css">
+  
 
   <!-- =======================================================
   * Template Name: MyResume
@@ -59,7 +60,7 @@
   <main class="main">
 
     <!-- Hero Section -->
-    <section id="hero" class="hero section light-background">
+    <section id="hero" class="hero section dark-background">
 
       <img src="assets/img/freepik__expand__26169.jpeg" alt="">
 
@@ -103,7 +104,7 @@
             
             <div class="row">
               <div class="col-lg-6">
-                <ul>
+                <ul class="about-info-list">
                   <li><i class="bi bi-chevron-right"></i> <strong>Birthday:</strong> <span>23/02/2005</span></li>
                   <li><i class="bi bi-chevron-right"></i> <strong>Website:</strong> <span>www.example.com</span></li>
                   <li><i class="bi bi-chevron-right"></i> <strong>Phone:</strong> <span>+370 69155029</span></li>
@@ -111,7 +112,8 @@
                 </ul>
               </div>
               <div class="col-lg-6">
-                <ul>
+
+                <ul class="about-info-list">
                   <li><i class="bi bi-chevron-right"></i> <strong>Age:</strong> <span>21</span></li>
                   
                   <li><i class="bi bi-chevron-right"></i> <strong>Email:</strong> <span>mobindavispayappan@gmail.com</span></li>
@@ -119,6 +121,27 @@
                 </ul>
               </div>
             </div>
+            <!-- nested unordered list in the About Section -->
+      <div class="col-12 mt-4">
+  <h3 class="about-subtitle">What I'm learning now</h3>
+  <ul class="about-learning-list">
+    <li>Programming languages
+      <ul>
+        <li>C++</li>
+        <li>Python</li>
+        <li>HTML, CSS &amp; JavaScript</li>
+      </ul>
+    </li>
+    <li>Content creation skills
+      <ul>
+        <li>Cinematic video shooting</li>
+        <li>Video editing</li>
+        <li>Instagram content planning</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+            <!-- end of nested unordered list in the About Section -->  
             
           </div>
         </div>
@@ -206,6 +229,54 @@
         <h2>Resume</h2>
         
       </div><!-- End Section Title -->
+      
+      <!-- Study Focus Table -->
+  <div class="container mb-4">
+    <h3 class="resume-subtitle">Study Focus Overview</h3>
+
+    <div class="table-wrapper">
+      <table class="study-table">
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>What I focus on</th>
+            <th>Hours / week</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Programming</td>
+            <td>C++, Python, HTML, CSS, JavaScript fundamentals</td>
+            <td>12</td>
+          </tr>
+          <tr>
+            <td>AI &amp; Data</td>
+            <td>Math, algorithms, basic machine learning concepts</td>
+            <td>8</td>
+          </tr>
+          <tr>
+            <td>Content creation</td>
+            <td>Cinematic shooting, video editing, Instagram content</td>
+            <td>5</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- End Study Focus Table -->
+
+
+
+      <!--Ordered list in the Resume Section  -->
+      <div class="container mb-4">
+  <h3 class="resume-subtitle">Key focus areas in my studies</h3>
+  <ol class="resume-goals-list">
+    <li>Building a strong foundation in mathematics, algorithms, and problem-solving.</li>
+    <li>Implementing AI concepts using C++, Python, HTML, CSS, and JavaScript.</li>
+    <li>Creating practical projects in machine learning and data analysis.</li>
+  </ol>
+</div>
+      <!--End of Ordered list in the Resume Section  -->
 
       <div class="resume-item">
   <h4>Bachelor of Artificial Intelligence</h4>
@@ -439,11 +510,11 @@
 
   </main>
 
-  <footer id="footer" class="footer position-relative light-background">
+  <footer id="footer" class="footer position-relative dark-background">
   
       <h2>Mobin Davis</h2>
    <p>
-   Artificial Intelligence student and creative content maker.  
+    Artificial Intelligence student and creative content maker.  
    Passionate about coding, video editing, and building modern digital experiences.
    </p>
 
