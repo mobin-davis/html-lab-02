@@ -235,28 +235,25 @@ a:focus-visible {
   }
 }
 
-/* Tablets, small laptops, and phones */
-@media (max-width: 1199px) {
+/* ==== DESKTOP SIDEBAR WIDTH (mobile uses hamburger menu) ==== */
+
+@media (min-width: 1200px) {
   #header,
   .header {
-    left: 0 !important;                   /* keep sidebar visible */
-    width: 210px !important;              /* smaller sidebar on small screens */
+    width: 240px !important;        /* sidebar width on big screens */
   }
 
   .header ~ main {
-    margin-left: 210px !important;        /* match same width */
+    margin-left: 240px !important;  /* content pushed to the right */
   }
 
   .header ~ main .hero {
-    margin-left: 0 !important;
+    margin-left: 0 !important;      /* fix hero weird margin */
     width: auto !important;
   }
-
-  /* hide the blue round toggle button – not needed if sidebar always visible */
-  #header .header-toggle {
-    display: none !important;
-  }
 }
+
+
 
 
 
