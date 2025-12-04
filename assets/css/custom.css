@@ -214,24 +214,52 @@ a:focus-visible {
 }
 
 
-/* === Always show sidebar, even on small / half-screen widths === */
+
+
+/* ==== RESPONSIVE SIDEBAR FIX – remove black gap & shrink sidebar ==== */
+
+/* Large screens (desktops) */
+@media (min-width: 1200px) {
+  #header,
+  .header {
+    width: 240px !important;              /* narrower than default */
+  }
+
+  .header ~ main {
+    margin-left: 240px !important;        /* must match width above */
+  }
+
+  .header ~ main .hero {
+    margin-left: 0 !important;            /* remove weird negative margin */
+    width: auto !important;
+  }
+}
+
+/* Tablets, small laptops, and phones */
 @media (max-width: 1199px) {
-  /* keep sidebar on-screen */
-  #header {
-    left: 0 !important;      /* override main.css that pushes it off-screen */
-    width: 50px !important; /* pick any width you like: 240, 260, 300… */
+  #header,
+  .header {
+    left: 0 !important;                   /* keep sidebar visible */
+    width: 210px !important;              /* smaller sidebar on small screens */
   }
 
-  /* push content to the right so it doesn't sit under the sidebar */
-  #header ~ main {
-    margin-left: 300px !important;  /* must match the width above */
+  .header ~ main {
+    margin-left: 210px !important;        /* match same width */
   }
 
-  /* hide the round toggle button since the menu is always visible */
+  .header ~ main .hero {
+    margin-left: 0 !important;
+    width: auto !important;
+  }
+
+  /* hide the blue round toggle button – not needed if sidebar always visible */
   #header .header-toggle {
     display: none !important;
   }
 }
+
+
+
 
 
 /* ========= RESPONSIVE FOOTER ========= */
@@ -449,8 +477,155 @@ a:focus-visible {
   color: #9ecbff;
 }
 
+/* ========= STEP 3 – CSS ANIMATIONS ========= */
+
+/* Fade-in-up animation for sections */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(60px);  /* start lower so effect is strong */
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply fade-in to sections (on page load) */
+.animate-section {
+  opacity: 0;
+  animation: fade-in-up 1.2s ease-out forwards;
+}
+
+/* Optional stagger so sections appear one after another */
+section.animate-section:nth-of-type(2) { animation-delay: 0.1s; }
+section.animate-section:nth-of-type(3) { animation-delay: 0.2s; }
+section.animate-section:nth-of-type(4) { animation-delay: 0.3s; }
+section.animate-section:nth-of-type(5) { animation-delay: 0.4s; }
+section.animate-section:nth-of-type(6) { animation-delay: 0.5s; }
+
+/* Pulse glow animation for back-to-top button */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 18px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+}
+
+.scroll-top {
+  animation: pulse-glow 2s ease-out infinite;
+}
 
 
+/* ========= STEP 4 – CSS-ONLY LOADER ========= */
 
+/* Overlay that covers the whole screen on first load */
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: #050816;             /* deep dark background */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: loader-hide 1.8s ease-out forwards;
+}
 
+/* Text under the dots */
+.page-loader .loader-text {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
 
+/* Dots container */
+.loader-dots {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* Individual dots */
+.loader-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2563eb;
+  animation: dots-bounce 0.6s ease-in-out infinite alternate;
+}
+
+/* Staggered animation for each dot */
+.loader-dots span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.loader-dots span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+/* Bouncing dots animation */
+@keyframes dots-bounce {
+  0% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* Fade the loader out and remove it */
+@keyframes loader-hide {
+  0% {
+    opacity: 1;
+    visibility: visible;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* ========= STEP 5 – RESPECT PREFERS-REDUCED-MOTION ========= */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Turn off section fade-in animation */
+  .animate-section {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Turn off pulsing glow on back-to-top button */
+  .scroll-top {
+    animation: none !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.85); /* keep a static shadow */
+  }
+
+  /* Turn off loader dot bounce and fade-out animation */
+  .page-loader {
+    animation: none !important;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .loader-dots span {
+    animation: none !important;
+  }
+}
+
+/* Remove border from iframes (fix W3C validator error) */
+iframe {
+  border: none;
+}
