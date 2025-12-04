@@ -193,47 +193,51 @@ a:focus-visible {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.85);
 }
 
+/* ==== LAYOUT: SIDEBAR ON DESKTOP, FULL-WIDTH CONTENT ON SMALL SCREENS ==== */
 
-/* ========= STEP 5 – RESPONSIVE LAYOUTS ========= */
-/* Large screens */
-@media (min-width: 1200px) {
-  #header { width: 200px !important; }
-  #header ~ main { margin-left: 300px !important; }
-}
-
-/* Tablets / medium screens */
-@media (min-width: 768px) and (max-width: 1199px) {
-  #header { width: 240px !important; }
-  #header ~ main { margin-left: 240px !important; }
-}
-
-/* Very small screens (phone) */
-@media (max-width: 767px) {
-  #header { width: 200px !important; }
-  #header ~ main { margin-left: 200px !important; }
-}
-
-
-
-
-/* ==== RESPONSIVE SIDEBAR FIX – remove black gap & shrink sidebar ==== */
-
-/* Large screens (desktops) */
+/* Desktop and large screens – sidebar visible, content shifted right */
 @media (min-width: 1200px) {
   #header,
   .header {
-    width: 240px !important;              /* narrower than default */
+    width: 240px !important;        /* sidebar width on big screens */
   }
 
+  #main,
   .header ~ main {
-    margin-left: 240px !important;        /* must match width above */
+    margin-left: 240px !important;  /* content aligned with sidebar */
   }
 
   .header ~ main .hero {
-    margin-left: 0 !important;            /* remove weird negative margin */
+    margin-left: 0 !important;
     width: auto !important;
   }
 }
+
+/* Tablets, half-window, phones – no left gap, sidebar only via hamburger */
+@media (max-width: 1199.98px) {
+  #main,
+  .header ~ main {
+    margin-left: 0 !important;         /* remove black strip */
+  }
+
+  section.hero {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .hero .container {
+    padding-left: 1rem !important;     /* nice inner padding only */
+    padding-right: 1rem !important;
+  }
+}
+
+
+
+
+
+
+
 
 /* ==== DESKTOP SIDEBAR WIDTH (mobile uses hamburger menu) ==== */
 
@@ -252,6 +256,9 @@ a:focus-visible {
     width: auto !important;
   }
 }
+
+
+
 
 
 
@@ -594,6 +601,77 @@ section.animate-section:nth-of-type(6) { animation-delay: 0.5s; }
   }
 }
 
+/* ========= DECORATIVE FLOATING SHAPES (VISIBLE VERSION) ========= */
+
+.hero-gradient-bg {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* container that covers the hero */
+.hero-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;   /* don't block clicks */
+  z-index: 1;             /* on top of image, but under text via blend */
+}
+
+/* base style for all circles */
+.hero-shapes .shape {
+  position: absolute;
+  border-radius: 999px;
+  background: radial-gradient(circle, #ffffff, #3b82f6, #1d4ed8);
+  opacity: 0.45;          /* bright enough to see */
+  mix-blend-mode: screen; /* glows with the background */
+}
+
+/* Circle 1 – top-right */
+.hero-shapes .shape-1 {
+  width: 180px;
+  height: 180px;
+  top: 8%;
+  right: 15%;
+  animation: float-shape 16s ease-in-out infinite alternate,
+             spin-shape 30s linear infinite;
+}
+
+/* Circle 2 – middle-left */
+.hero-shapes .shape-2 {
+  width: 230px;
+  height: 230px;
+  top: 40%;
+  left: 5%;
+  animation: float-shape 18s ease-in-out infinite alternate-reverse,
+             spin-shape 36s linear infinite;
+}
+
+/* Circle 3 – bottom-right */
+.hero-shapes .shape-3 {
+  width: 150px;
+  height: 150px;
+  bottom: 8%;
+  right: 10%;
+  animation: float-shape 20s ease-in-out infinite alternate,
+             spin-shape 28s linear infinite reverse;
+}
+
+/* Floating up-and-down */
+@keyframes float-shape {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-25px); }
+  100% { transform: translateY(15px); }
+}
+
+/* Slow rotation */
+@keyframes spin-shape {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+
+
 /* ========= STEP 5 – RESPECT PREFERS-REDUCED-MOTION ========= */
 
 @media (prefers-reduced-motion: reduce) {
@@ -620,9 +698,53 @@ section.animate-section:nth-of-type(6) { animation-delay: 0.5s; }
   .loader-dots span {
     animation: none !important;
   }
+    .hero-gradient-bg::before {
+    animation: none !important;
+  }
+
 }
 
 /* Remove border from iframes (fix W3C validator error) */
 iframe {
   border: none;
+}
+
+/* ========= OPTIONAL – ANIMATED HERO GRADIENT BACKGROUND ========= */
+
+.hero-gradient-bg {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Gradient overlay behind hero content */
+.hero-gradient-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    120deg,
+    #2563eb,
+    #7c3aed,
+    #ec4899,
+    #22c55e
+  );
+  background-size: 300% 300%;
+  opacity: 0.35;                    /* adjust if too strong/weak */
+  mix-blend-mode: soft-light;       /* blends with your hero image */
+  animation: hero-gradient-move 18s ease-in-out infinite alternate;
+}
+
+/* Keyframes for slow gradient movement */
+@keyframes hero-gradient-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
