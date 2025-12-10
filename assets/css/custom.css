@@ -833,6 +833,8 @@ section#contact {
   color: #ffffff;
 }
 
+
+
 /* ===== Real-time validation styles ===== */
 
 .form-error {
@@ -939,4 +941,52 @@ button:disabled,
 button[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+
+/* ===== Ratings history block ===== */
+
+.ratings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ratings-list li {
+  background: #151820;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.ratings-list .rating-name {
+  font-weight: 600;
+  color: #e5e9f0;
+}
+
+.ratings-list .rating-value {
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+/* colour for averages */
+
+.rating-low {
+  background-color: #e74c3c;   /* 0–4 */
+}
+
+.rating-mid {
+  background-color: #f39c12;   /* 4–7 */
+}
+
+.rating-high {
+  background-color: #27ae60;   /* 7–10 */
 }
