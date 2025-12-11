@@ -629,6 +629,94 @@
   </div>
 </div>
 
+<!-- ===== Memory Game Section ===== -->
+<section id="memory-game" class="section">
+  <div class="container">
+    <h2 class="section-title">Memory Game</h2>
+    <p class="section-subtitle">
+      Flip the cards and find all matching pairs. Choose a difficulty and press Start.
+    </p>
+
+    <!-- Controls: difficulty + buttons -->
+    <div class="memory-controls">
+      <div class="memory-control-group">
+        <label for="memory-difficulty" class="me-2 memory-label">Difficulty:</label>
+<select id="memory-difficulty" class="memory-select">
+  <!-- VALUE must be just "4x3" and "6x4" -->
+  <option value="4x3">Easy (4 × 3)</option>
+  <option value="6x4">Hard (6 × 4)</option>
+</select>
+
+        </select>
+      </div>
+
+      <div class="memory-control-group memory-buttons">
+        <button id="memory-start" type="button" class="btn btn-primary">
+          Start
+        </button>
+        <button id="memory-restart" type="button" class="btn btn-outline-light">
+          Restart
+        </button>
+      </div>
+    </div>
+
+    <!-- Game board (cards grid will be generated with JS) -->
+    <div id="memory-board" class="memory-board">
+      <!-- cards will be injected here by JavaScript -->
+    </div>
+
+    <!-- Stats panel -->
+    <div id="memory-stats" class="memory-stats">
+      <div class="memory-stat">
+        <span class="label">Moves:</span>
+        <span id="memory-moves" class="value">0</span>
+      </div>
+
+      <div class="memory-stat">
+    <span class="label">Time:</span>
+    <span id="memory-timer" class="value">00:00</span>
+  </div>
+
+         
+      <div class="memory-stat">
+        <span class="label">Matched pairs:</span>
+        <span id="memory-matches" class="value">0</span>
+      </div>
+      
+          <!-- Best results per difficulty -->
+  <div class="memory-stat">
+    <span class="label">Best (Easy 4×3):</span>
+    <span id="memory-best-4x3" class="value">–</span>
+  </div>
+
+  <div class="memory-stat">
+    <span class="label">Best (Hard 6×4):</span>
+    <span id="memory-best-6x4" class="value">–</span>
+  </div>
+
+  <!-- Timer placeholder (we'll wire it up in Part 2) -->
+  <div class="memory-stat">
+    <span class="label">Timer:</span>
+    <span id="memory-timer" class="value">0s</span>
+  </div>
+
+    </div>
+
+    <div
+  id="memory-win-message"
+  class="memory-win-message"
+  aria-live="polite"
+></div>
+
+    <!-- Win message -->
+    <div id="memory-win-message" class="memory-win-message" aria-live="polite">
+      <!-- “You win!” will appear here -->
+    </div>
+  </div>
+</section>
+<!-- ===== End Memory Game Section ===== -->
+
+
 
   <footer id="footer" class="footer position-relative dark-background">
   

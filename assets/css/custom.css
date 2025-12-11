@@ -990,3 +990,254 @@ button[disabled] {
 .rating-high {
   background-color: #27ae60;   /* 7–10 */
 }
+
+/* ==== Memory Game base styles ==== */
+
+#memory-game {
+  padding: 4rem 0;
+}
+
+#memory-game .section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+#memory-game .section-subtitle {
+  text-align: center;
+  color: #a0a7b5;
+  margin-bottom: 2rem;
+}
+
+/* Controls row */
+.memory-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.memory-control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memory-control-group label {
+  font-weight: 500;
+}
+
+.memory-control-group select {
+  background-color: #11141f;
+  color: #fff;
+  border: 1px solid #2c3242;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+}
+
+.memory-buttons .btn {
+  min-width: 110px;
+}
+
+/* Board placeholder */
+.memory-board {
+  background: #11141f;
+  border-radius: 16px;
+  padding: 1rem;
+  min-height: 220px;          /* space for cards later */
+  display: grid;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+/* We’ll use this later when we generate cards */
+.memory-card {
+  width: 80px;
+  height: 100px;
+  background: #1a202f;
+  border-radius: 12px;
+  border: 1px solid #2c3242;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+/* ===== MEMORY GAME – BOARD & CARD FLIP ===== */
+
+#memory-board {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #020617;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+/* Easy: 4 x 3 */
+#memory-board.small-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Hard: 6 x 4 */
+#memory-board.large-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+/* Card outer button */
+.memory-card {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;          /* square */
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  perspective: 800px;         /* needed for 3D flip */
+}
+
+/* Inner wrapper that actually rotates */
+.memory-card-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Faces */
+.memory-card-front,
+.memory-card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Front (question side) */
+.memory-card-front {
+  background: radial-gradient(circle at 30% 20%, #1d4ed8, #020617 55%);
+}
+
+/* Back (emoji side) */
+.memory-card-back {
+  background: radial-gradient(circle at 20% 0%, #38bdf8, #0f172a 60%);
+  transform: rotateY(180deg);
+  font-size: 2rem;
+}
+
+/* When JS adds .flip to the card, rotate inner 180deg */
+.memory-card.flip .memory-card-inner {
+  transform: rotateY(180deg);
+}
+
+/* Matched cards: green highlight and no pointer */
+.memory-card.matched .memory-card-inner {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.9);
+  opacity: 0.9;
+}
+
+.memory-card.matched {
+  cursor: default;
+}
+
+
+/* Win message */
+.memory-message {
+  min-height: 1.5rem;
+  font-weight: 600;
+  color: #4ade80; /* green */
+}
+
+/* ===== Memory game win banner ===== */
+
+.memory-win-message {
+  max-width: 420px;
+  margin: 1.5rem auto 0;      /* centered under stats */
+  padding: 0.9rem 1.4rem;
+  border-radius: 999px;       /* pill shape */
+  background: linear-gradient(
+    135deg,
+    rgba(52, 152, 255, 0.25),
+    rgba(46, 204, 113, 0.25)
+  );
+  border: 1px solid rgba(52, 152, 255, 0.6);
+  color: #e9f3ff;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.6),
+    0 0 18px rgba(52, 152, 255, 0.45);
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
+  pointer-events: none;       /* clicks pass through */
+  transition:
+    opacity 220ms ease-out,
+    transform 220ms ease-out;
+}
+
+/* When we actually want to show it */
+.memory-win-message.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Little “pop” animation when the message appears */
+.memory-win-message.pop {
+  animation: memoryWinPop 420ms ease-out;
+}
+
+@keyframes memoryWinPop {
+  0% {
+    transform: translateY(8px) scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.memory-card-inner--locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+}
+
+
+
+/* Fix Memory Game layout so it does NOT sit under the sidebar on desktop */
+@media (min-width: 1200px) {
+  #memory-game .container {
+    margin-left: 260px !important; /* adjust to match your site’s layout */
+    max-width: calc(100% - 260px);
+  }
+}
+
+
+
+
+
