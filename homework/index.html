@@ -1,139 +1,151 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>Team Work Calendar</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo" aria-hidden="true"></div>
-      <div>
-        <h1>Team Work Calendar</h1>
-        <p class="muted">Plan team tasks with accurate start/end time and a clean month view.</p>
-      </div>
-    </div>
-
-    <div class="topbar-actions">
-      <button id="prevMonth" class="btn btn-ghost" type="button" aria-label="Previous month">◀</button>
-      <div class="month-label">
-        <div id="monthTitle" class="month-title">Month</div>
-        <div class="muted" id="todayHint"></div>
-      </div>
-      <button id="nextMonth" class="btn btn-ghost" type="button" aria-label="Next month">▶</button>
-      <button id="goToday" class="btn btn-primary" type="button">Today</button>
-    </div>
+  <header class="app-header">
+    <h1>Team Work Calendar</h1>
+    <p class="subtitle">
+      Plan weekly tasks for your team. Add tasks, assign owners, and keep track of who
+      is doing what and when.
+    </p>
   </header>
 
-  <main class="layout">
-    <!-- LEFT: Create / manage events -->
-    <section class="panel">
-      <h2 class="panel-title">Add schedule item</h2>
-
-      <form id="eventForm" class="form">
-        <div class="grid2">
-          <div class="field">
-            <label for="title">Title</label>
-            <input id="title" name="title" type="text" placeholder="e.g., Sprint planning" required />
-            <div class="error" data-error-for="title"></div>
-          </div>
-
-          <div class="field">
-            <label for="member">Owner</label>
-            <input id="member" name="member" type="text" placeholder="e.g., Mobin" required />
-            <div class="error" data-error-for="member"></div>
-          </div>
+  <main class="app-layout">
+    <!-- LEFT: Calendar board -->
+    <section class="calendar-panel">
+      <div class="toolbar">
+        <div class="filter-group">
+          <label for="member-filter">Filter by member:</label>
+          <select id="member-filter">
+            <option value="all">All team members</option>
+          </select>
         </div>
 
-        <div class="grid2">
-          <div class="field">
-            <label for="date">Date</label>
-            <input id="date" name="date" type="date" required />
-            <div class="error" data-error-for="date"></div>
-          </div>
-
-          <div class="field">
-            <label for="location">Location</label>
-            <input id="location" name="location" type="text" placeholder="e.g., Room 201 / Discord" />
-          </div>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label for="start">Start time</label>
-            <input id="start" name="start" type="time" step="300" required />
-            <div class="hint muted">24h format, e.g., 09:30</div>
-            <div class="error" data-error-for="start"></div>
-          </div>
-
-          <div class="field">
-            <label for="end">End time</label>
-            <input id="end" name="end" type="time" step="300" required />
-            <div class="hint muted">Must be after start time</div>
-            <div class="error" data-error-for="end"></div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="notes">Notes</label>
-          <textarea id="notes" name="notes" rows="3" placeholder="Optional details..."></textarea>
-        </div>
-
-        <div class="form-actions">
-          <button class="btn btn-primary" type="submit">Add to calendar</button>
-          <button id="clearAll" class="btn btn-danger" type="button" title="Deletes all saved events">
-            Clear all
-          </button>
-        </div>
-
-        <div class="muted small">
-          Saved locally in your browser (localStorage). It will still work on GitHub Pages.
-        </div>
-      </form>
-
-      <hr class="sep" />
-
-      <div class="filters">
-        <div class="field">
-          <label for="filterMember">Filter by owner</label>
-          <input id="filterMember" type="text" placeholder="Type a name (optional)" />
-        </div>
-      </div>
-
-      <div class="panel-title-row">
-        <h3 class="panel-subtitle">Selected day</h3>
-        <div class="muted" id="selectedDayLabel">—</div>
-      </div>
-
-      <div id="dayEvents" class="day-events">
-        <!-- rendered by JS -->
-      </div>
-    </section>
-
-    <!-- RIGHT: Calendar -->
-    <section class="calendar-wrap">
-      <div class="calendar-head">
-        <div class="muted small">Click a day to see events. Times are always shown as HH:MM–HH:MM.</div>
         <div class="legend">
-          <span class="dot"></span><span class="muted small">Has events</span>
+          <span class="legend-label">Status:</span>
+          <span class="legend-pill status-planned">Planned</span>
+          <span class="legend-pill status-in-progress">In progress</span>
+          <span class="legend-pill status-done">Done</span>
         </div>
       </div>
 
-      <div class="calendar">
-        <div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div><div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div><div class="dow">Sun</div>
-        <div id="calendarGrid" class="calendar-grid">
-          <!-- cells rendered by JS -->
-        </div>
+      <div id="calendar-board" class="calendar-board">
+        <!-- JS will build the grid here -->
       </div>
-
-      
     </section>
+
+    <!-- RIGHT: Task form & team info -->
+    <aside class="sidebar">
+      <section class="card">
+        <h2>Add / Edit Task</h2>
+        <form id="task-form">
+          <div class="form-row">
+            <label for="task-title">Task title</label>
+            <input
+              type="text"
+              id="task-title"
+              placeholder="e.g. Sprint planning"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <label for="task-member">Assigned to</label>
+            <select id="task-member" required></select>
+          </div>
+
+          <div class="form-row two-cols">
+            <div>
+              <label for="task-day">Day</label>
+              <select id="task-day" required>
+                <option value="monday">Monday</option>
+                <option value="tuesday">Tuesday</option>
+                <option value="wednesday">Wednesday</option>
+                <option value="thursday">Thursday</option>
+                <option value="friday">Friday</option>
+                <option value="saturday">Saturday</option>
+                <option value="sunday">Sunday</option>
+              </select>
+            </div>
+            <div>
+              <label for="task-slot">Time</label>
+               <div class="time-row">
+  <div class="field">
+    <label for="task-start">Start time</label>
+    <input id="task-start" type="time" class="form-control" required>
+    <small class="help">24h format, e.g. 09:30</small>
+  </div>
+
+  <div class="field">
+    <label for="task-end">End time</label>
+    <input id="task-end" type="time" class="form-control" required>
+    <small class="help">Must be after start time</small>
+  </div>
+</div>
+
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="task-status">Status</label>
+            <select id="task-status" required>
+              <option value="planned">Planned</option>
+              <option value="in-progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label for="task-notes">Notes (optional)</label>
+            <textarea
+              id="task-notes"
+              rows="3"
+              placeholder="Short description of the task..."
+            ></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Save task</button>
+            <button type="reset" class="btn ghost" id="clear-form">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Team</h2>
+        <ul id="team-list" class="team-list">
+          <!-- JS inserts team members here for nice UI -->
+        </ul>
+      </section>
+    </aside>
   </main>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <!-- Simple task detail popup -->
+  <div id="task-dialog" class="dialog hidden">
+    <div class="dialog-content">
+      <button class="dialog-close" id="dialog-close">&times;</button>
+      <h2 id="dialog-title">Task details</h2>
+      <p id="dialog-meta" class="dialog-meta"></p>
+      <p id="dialog-notes"></p>
 
-  <script src="./app.js"></script>
+      <div class="dialog-actions">
+        <button id="dialog-delete" class="btn danger">Delete task</button>
+        <button id="dialog-ok" class="btn secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <button id="invite-whatsapp" class="btn btn-success">
+  Invite via WhatsApp
+</button>
+
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>

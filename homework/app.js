@@ -1,372 +1,428 @@
-/* Team Work Calendar (no framework)
-   Key design: store date + start/end time explicitly, render always HH:MM–HH:MM.
-*/
+/* =========================
+   Team Work Calendar (app.js)
+   - Exact time slots (no Morning/Afternoon/Evening)
+   - Team members included
+   ========================= */
 
-const STORAGE_KEY = "twc_events_v1";
+(() => {
+  // ---------- Team members ----------
+  const TEAM_MEMBERS = [
+    { id: "anna", name: "Anna", role: "Product Owner", color: "#63b3ed" },
+    { id: "liam", name: "Liam", role: "Developer", color: "#f6e05e" },
+    { id: "sofia", name: "Sofia", role: "Developer", color: "#9f7aea" },
+    { id: "noah", name: "Noah", role: "QA Engineer", color: "#68d391" },
+  ];
 
-const els = {
-  monthTitle: document.getElementById("monthTitle"),
-  todayHint: document.getElementById("todayHint"),
-  grid: document.getElementById("calendarGrid"),
+  // ---------- Exact time slots ----------
+  // These MUST match the <option value="..."> you put in index.html
+  const TIME_SLOTS = [
+    "09:00-10:00",
+    "10:00-11:00",
+    "11:00-12:00",
+    "13:00-14:00",
+    "14:00-15:00",
+    "15:00-16:00",
+    "16:00-17:00",
+  ];
 
-  prevMonth: document.getElementById("prevMonth"),
-  nextMonth: document.getElementById("nextMonth"),
-  goToday: document.getElementById("goToday"),
+  // ---------- Storage ----------
+  const STORAGE_KEY = "twc_events_v1";
 
-  form: document.getElementById("eventForm"),
-  title: document.getElementById("title"),
-  member: document.getElementById("member"),
-  date: document.getElementById("date"),
-  start: document.getElementById("start"),
-  end: document.getElementById("end"),
-  location: document.getElementById("location"),
-  notes: document.getElementById("notes"),
+  // Event shape:
+  // {
+  //   id: string,
+  //   title: string,
+  //   memberId: string,
+  //   dateISO: "YYYY-MM-DD",
+  //   slot: "09:00-10:00",   // exact time range string
+  //   location: string,
+  //   notes: string
+  // }
 
-  filterMember: document.getElementById("filterMember"),
-  selectedDayLabel: document.getElementById("selectedDayLabel"),
-  dayEvents: document.getElementById("dayEvents"),
-  clearAll: document.getElementById("clearAll"),
+  // ---------- DOM ----------
+  const boardEl = document.getElementById("calendar-board");
+  const monthLabelEl = document.getElementById("month-label");
+  const todayLabelEl = document.getElementById("today-label");
+  const prevBtn = document.getElementById("month-prev");
+  const nextBtn = document.getElementById("month-next");
+  const todayBtn = document.getElementById("go-today");
 
-  toast: document.getElementById("toast"),
-};
+  const formEl = document.getElementById("event-form");
+  const titleEl = document.getElementById("task-title");
+  const dateEl = document.getElementById("task-date");
+  const slotEl = document.getElementById("task-slot");
+  const memberEl = document.getElementById("task-member");
+  const locationEl = document.getElementById("task-location");
+  const notesEl = document.getElementById("task-notes");
 
-let events = loadEvents();
-let viewDate = new Date(); // month being viewed
-let selectedDateStr = toDateStr(new Date()); // YYYY-MM-DD
+  const clearAllBtn = document.getElementById("clear-all");
 
-init();
+  const memberFilterEl = document.getElementById("member-filter");
+  const selectedDayLabelEl = document.getElementById("selected-day-label");
+  const selectedDayListEl = document.getElementById("selected-day-list");
 
-function init() {
-  // default inputs
-  els.date.value = selectedDateStr;
-  els.start.value = "09:00";
-  els.end.value = "10:00";
-  els.todayHint.textContent = `Today: ${toDateStr(new Date())}`;
+  // Optional: if you have a “Has events” legend indicator etc. keep it
+  // Otherwise ignore.
 
-  // listeners
-  els.prevMonth.addEventListener("click", () => {
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-    render();
-  });
-  els.nextMonth.addEventListener("click", () => {
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
-    render();
-  });
-  els.goToday.addEventListener("click", () => {
-    viewDate = new Date();
-    selectedDateStr = toDateStr(new Date());
-    els.date.value = selectedDateStr;
-    render();
-    toast("Jumped to today.");
-  });
+  // ---------- State ----------
+  const now = new Date();
+  let viewYear = now.getFullYear();
+  let viewMonth = now.getMonth(); // 0-11
+  let selectedDateISO = toISODate(now);
+  let events = loadEvents();
 
-  els.filterMember.addEventListener("input", () => {
-    renderSelectedDay();
-    renderCalendar(); // so the mini previews match filter too
-  });
+  // ---------- Init ----------
+  initMemberDropdowns();
+  initDefaultDate();
+  bindUI();
+  renderAll();
 
-  els.clearAll.addEventListener("click", () => {
-    if (!confirm("Delete ALL calendar events saved in this browser?")) return;
-    events = [];
-    saveEvents(events);
-    render();
-    toast("All events cleared.");
-  });
+  // ---------- Functions ----------
+  function initMemberDropdowns() {
+    // task-member
+    if (memberEl) {
+      memberEl.innerHTML = "";
+      TEAM_MEMBERS.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = `${m.name} — ${m.role}`;
+        memberEl.appendChild(opt);
+      });
+    }
 
-  els.form.addEventListener("submit", (e) => {
-    e.preventDefault();
+    // member-filter
+    if (memberFilterEl) {
+      memberFilterEl.innerHTML = "";
+      const allOpt = document.createElement("option");
+      allOpt.value = "";
+      allOpt.textContent = "All members";
+      memberFilterEl.appendChild(allOpt);
 
-    clearErrors();
-    const data = readForm();
-    const errors = validateForm(data);
+      TEAM_MEMBERS.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name;
+        memberFilterEl.appendChild(opt);
+      });
+    }
+  }
 
-    if (errors.length) {
-      errors.forEach(({ field, message }) => setError(field, message));
+  function initDefaultDate() {
+    if (dateEl) dateEl.value = selectedDateISO;
+    setTodayLabel();
+  }
+
+  function bindUI() {
+    if (prevBtn) prevBtn.addEventListener("click", () => changeMonth(-1));
+    if (nextBtn) nextBtn.addEventListener("click", () => changeMonth(1));
+    if (todayBtn) todayBtn.addEventListener("click", () => goToday());
+
+    if (memberFilterEl) {
+      memberFilterEl.addEventListener("input", () => {
+        renderBoard();
+        renderSelectedDayPanel();
+      });
+    }
+
+    if (formEl) {
+      formEl.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const title = (titleEl?.value || "").trim();
+        const dateISO = (dateEl?.value || "").trim();
+        const slot = (slotEl?.value || "").trim();
+        const memberId = (memberEl?.value || "").trim();
+        const location = (locationEl?.value || "").trim();
+        const notes = (notesEl?.value || "").trim();
+
+        // Basic validation
+        if (!title || !dateISO || !slot || !memberId) {
+          // If you already have UI validation, keep it.
+          alert("Please fill Title, Date, Time, and Owner.");
+          return;
+        }
+
+        // Ensure slot is one of allowed values (protect against old morning values)
+        if (!TIME_SLOTS.includes(slot)) {
+          alert("Invalid time slot. Please choose a valid time.");
+          return;
+        }
+
+        const newEvent = {
+          id: cryptoId(),
+          title,
+          memberId,
+          dateISO,
+          slot, // now exact time
+          location,
+          notes,
+        };
+
+        events.push(newEvent);
+        saveEvents(events);
+
+        // Keep UX: keep selected date, show events
+        selectedDateISO = dateISO;
+        viewYear = Number(dateISO.slice(0, 4));
+        viewMonth = Number(dateISO.slice(5, 7)) - 1;
+
+        // Reset form but keep date as selected day
+        formEl.reset();
+        if (dateEl) dateEl.value = selectedDateISO;
+
+        renderAll();
+      });
+    }
+
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener("click", () => {
+        if (!confirm("Delete all events?")) return;
+        events = [];
+        saveEvents(events);
+        renderAll();
+      });
+    }
+  }
+
+  function renderAll() {
+    renderHeader();
+    renderBoard();
+    renderSelectedDayPanel();
+  }
+
+  function renderHeader() {
+    const monthName = new Date(viewYear, viewMonth, 1).toLocaleString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+    if (monthLabelEl) monthLabelEl.textContent = monthName;
+    setTodayLabel();
+  }
+
+  function renderBoard() {
+    if (!boardEl) return;
+
+    boardEl.innerHTML = "";
+
+    const firstOfMonth = new Date(viewYear, viewMonth, 1);
+    const startDay = (firstOfMonth.getDay() + 6) % 7; // Monday=0
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+    const totalCells = 42; // 6 weeks grid
+    const filterMember = memberFilterEl?.value || "";
+
+    for (let i = 0; i < totalCells; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cal-day";
+
+      const dayNum = i - startDay + 1;
+      if (dayNum < 1 || dayNum > daysInMonth) {
+        cell.classList.add("is-empty");
+        boardEl.appendChild(cell);
+        continue;
+      }
+
+      const dateObj = new Date(viewYear, viewMonth, dayNum);
+      const dateISO = toISODate(dateObj);
+
+      // Day header
+      const head = document.createElement("div");
+      head.className = "cal-day-head";
+      head.textContent = dayNum;
+      cell.appendChild(head);
+
+      if (dateISO === toISODate(new Date())) cell.classList.add("is-today");
+      if (dateISO === selectedDateISO) cell.classList.add("is-selected");
+
+      // Events indicator
+      const dayEvents = eventsForDate(dateISO).filter((ev) =>
+        filterMember ? ev.memberId === filterMember : true
+      );
+
+      if (dayEvents.length > 0) {
+        cell.classList.add("has-events");
+
+        // Small list inside cell (sorted by time)
+        dayEvents
+          .slice()
+          .sort((a, b) => a.slot.localeCompare(b.slot))
+          .slice(0, 2)
+          .forEach((ev) => {
+            const pill = document.createElement("div");
+            pill.className = "cal-pill";
+            const member = TEAM_MEMBERS.find((m) => m.id === ev.memberId);
+            pill.style.borderLeftColor = member?.color || "#60a5fa";
+            pill.textContent = `${ev.slot} • ${ev.title}`;
+            cell.appendChild(pill);
+          });
+
+        if (dayEvents.length > 2) {
+          const more = document.createElement("div");
+          more.className = "cal-more";
+          more.textContent = `+${dayEvents.length - 2} more`;
+          cell.appendChild(more);
+        }
+      }
+
+      // Click selects day
+      cell.addEventListener("click", () => {
+        selectedDateISO = dateISO;
+        if (dateEl) dateEl.value = selectedDateISO;
+        renderBoard();
+        renderSelectedDayPanel();
+      });
+
+      boardEl.appendChild(cell);
+    }
+  }
+
+  function renderSelectedDayPanel() {
+    if (selectedDayLabelEl) {
+      const d = fromISODate(selectedDateISO);
+      selectedDayLabelEl.textContent = d.toLocaleDateString(undefined, {
+        weekday: "long",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    if (!selectedDayListEl) return;
+    selectedDayListEl.innerHTML = "";
+
+    const filterMember = memberFilterEl?.value || "";
+    const list = eventsForDate(selectedDateISO)
+      .filter((ev) => (filterMember ? ev.memberId === filterMember : true))
+      .sort((a, b) => a.slot.localeCompare(b.slot));
+
+    if (list.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "day-empty";
+      empty.textContent = "No events for this day.";
+      selectedDayListEl.appendChild(empty);
       return;
     }
 
-    // store event with date+time explicitly
-    const evt = {
-      id: cryptoRandomId(),
-      title: data.title.trim(),
-      member: data.member.trim(),
-      date: data.date,
-      start: data.start,
-      end: data.end,
-      location: data.location.trim(),
-      notes: data.notes.trim(),
-      createdAt: new Date().toISOString(),
-    };
+    list.forEach((ev) => {
+      const row = document.createElement("div");
+      row.className = "day-event";
 
-    events.push(evt);
-    events = normalizeSort(events);
-    saveEvents(events);
+      const member = TEAM_MEMBERS.find((m) => m.id === ev.memberId);
 
-    // keep selected day and UI updated
-    selectedDateStr = data.date;
-    els.date.value = selectedDateStr;
+      const title = document.createElement("div");
+      title.className = "day-event-title";
+      title.textContent = ev.title;
 
-    // reset some fields but keep date
-    els.title.value = "";
-    els.location.value = "";
-    els.notes.value = "";
-    // keep member as convenience
-    toast("Added event.");
-    render();
-  });
+      const meta = document.createElement("div");
+      meta.className = "day-event-meta";
 
-  render();
-}
+      // IMPORTANT: show exact time here
+      const time = document.createElement("span");
+      time.className = "badge badge-time";
+      time.textContent = ev.slot;
 
-function render() {
-  renderCalendar();
-  renderSelectedDay();
-}
+      const owner = document.createElement("span");
+      owner.className = "badge badge-owner";
+      owner.textContent = member ? member.name : ev.memberId;
+      owner.style.borderColor = member?.color || "#60a5fa";
 
-function renderCalendar() {
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
+      meta.appendChild(time);
+      meta.appendChild(owner);
 
-  els.monthTitle.textContent = new Date(year, month, 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+      if (ev.location) {
+        const loc = document.createElement("span");
+        loc.className = "badge badge-loc";
+        loc.textContent = ev.location;
+        meta.appendChild(loc);
+      }
 
-  els.grid.innerHTML = "";
+      if (ev.notes) {
+        const note = document.createElement("div");
+        note.className = "day-event-notes";
+        note.textContent = ev.notes;
+        row.appendChild(title);
+        row.appendChild(meta);
+        row.appendChild(note);
+      } else {
+        row.appendChild(title);
+        row.appendChild(meta);
+      }
 
-  // Monday-first calendar
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
+      const actions = document.createElement("div");
+      actions.className = "day-event-actions";
 
-  // Convert JS Sunday-first (0..6) to Monday-first (0..6)
-  const mondayIndex = (first.getDay() + 6) % 7;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-sm btn-danger";
+      del.textContent = "Delete";
+      del.addEventListener("click", () => {
+        events = events.filter((x) => x.id !== ev.id);
+        saveEvents(events);
+        renderAll();
+      });
 
-  // previous month tail
-  const prevMonthLast = new Date(year, month, 0);
-  for (let i = 0; i < mondayIndex; i++) {
-    const dayNum = prevMonthLast.getDate() - (mondayIndex - 1 - i);
-    const d = new Date(year, month - 1, dayNum);
-    els.grid.appendChild(dayCell(d, true));
-  }
+      actions.appendChild(del);
+      row.appendChild(actions);
 
-  // current month
-  for (let d = 1; d <= last.getDate(); d++) {
-    els.grid.appendChild(dayCell(new Date(year, month, d), false));
-  }
-
-  // next month head fill to full weeks
-  const totalCells = els.grid.children.length;
-  const remainder = totalCells % 7;
-  const add = remainder === 0 ? 0 : 7 - remainder;
-  for (let i = 1; i <= add; i++) {
-    els.grid.appendChild(dayCell(new Date(year, month + 1, i), true));
-  }
-}
-
-function dayCell(dateObj, isMuted) {
-  const dateStr = toDateStr(dateObj);
-  const cell = document.createElement("div");
-  cell.className = "day" + (isMuted ? " muted-day" : "");
-  cell.setAttribute("data-date", dateStr);
-
-  const todayStr = toDateStr(new Date());
-  if (dateStr === todayStr) cell.classList.add("today");
-  if (dateStr === selectedDateStr) cell.classList.add("selected");
-
-  const items = eventsForDate(dateStr, getMemberFilter());
-  const count = items.length;
-
-  cell.innerHTML = `
-    <div class="day-number">${dateObj.getDate()}</div>
-    ${count ? `<div class="day-badge">${count} event${count > 1 ? "s" : ""}</div>` : ""}
-    <div class="mini-events"></div>
-  `;
-
-  // show up to 2 mini previews with accurate time
-  const miniWrap = cell.querySelector(".mini-events");
-  items.slice(0, 2).forEach((evt) => {
-    const mini = document.createElement("div");
-    mini.className = "mini";
-    mini.innerHTML = `
-      <span class="mini-time">${fmtRange(evt.start, evt.end)}</span>
-      <span title="${escapeHtml(evt.title)}">${escapeHtml(evt.title)}</span>
-    `;
-    miniWrap.appendChild(mini);
-  });
-
-  cell.addEventListener("click", () => {
-    selectedDateStr = dateStr;
-    els.date.value = dateStr;
-    render();
-  });
-
-  return cell;
-}
-
-function renderSelectedDay() {
-  const labelDate = new Date(selectedDateStr + "T00:00:00");
-  els.selectedDayLabel.textContent = labelDate.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-
-  const items = eventsForDate(selectedDateStr, getMemberFilter());
-
-  if (!items.length) {
-    els.dayEvents.innerHTML = `
-      <div class="muted">No events for this day${getMemberFilter() ? " (with current filter)" : ""}.</div>
-    `;
-    return;
-  }
-
-  els.dayEvents.innerHTML = "";
-  items.forEach((evt) => {
-    const card = document.createElement("div");
-    card.className = "event-card";
-    card.innerHTML = `
-      <h4 class="event-title">${escapeHtml(evt.title)}</h4>
-      <div class="event-meta">
-        <span class="pill">🕒 ${fmtRange(evt.start, evt.end)}</span>
-        <span class="pill">👤 ${escapeHtml(evt.member)}</span>
-        ${evt.location ? `<span class="pill">📍 ${escapeHtml(evt.location)}</span>` : ""}
-      </div>
-      ${evt.notes ? `<div class="muted small" style="margin-top:8px">${escapeHtml(evt.notes)}</div>` : ""}
-      <div class="event-actions">
-        <button class="link-btn" type="button" data-del="${evt.id}">Delete</button>
-      </div>
-    `;
-
-    card.querySelector(`[data-del="${evt.id}"]`).addEventListener("click", () => {
-      if (!confirm("Delete this event?")) return;
-      events = events.filter((e) => e.id !== evt.id);
-      saveEvents(events);
-      render();
-      toast("Event deleted.");
+      selectedDayListEl.appendChild(row);
     });
-
-    els.dayEvents.appendChild(card);
-  });
-}
-
-/* ---------- helpers ---------- */
-
-function readForm() {
-  return {
-    title: els.title.value,
-    member: els.member.value,
-    date: els.date.value,
-    start: els.start.value,
-    end: els.end.value,
-    location: els.location.value || "",
-    notes: els.notes.value || "",
-  };
-}
-
-function validateForm(data) {
-  const errors = [];
-
-  if (!data.title.trim()) errors.push({ field: "title", message: "Title is required." });
-  if (!data.member.trim()) errors.push({ field: "member", message: "Owner is required." });
-  if (!data.date) errors.push({ field: "date", message: "Date is required." });
-
-  if (!data.start) errors.push({ field: "start", message: "Start time is required." });
-  if (!data.end) errors.push({ field: "end", message: "End time is required." });
-
-  // Time comparison: ensure end > start
-  if (data.start && data.end) {
-    const startMin = toMinutes(data.start);
-    const endMin = toMinutes(data.end);
-    if (endMin <= startMin) errors.push({ field: "end", message: "End time must be after start time." });
   }
 
-  return errors;
-}
-
-function setError(fieldId, message) {
-  const el = document.querySelector(`[data-error-for="${fieldId}"]`);
-  if (el) el.textContent = message;
-}
-
-function clearErrors() {
-  document.querySelectorAll(".error").forEach((e) => (e.textContent = ""));
-}
-
-function toMinutes(hhmm) {
-  const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function fmtRange(start, end) {
-  // start/end are stored as "HH:MM"
-  return `${start}–${end}`;
-}
-
-function eventsForDate(dateStr, memberFilter) {
-  const list = events.filter((e) => e.date === dateStr);
-  const filtered = memberFilter
-    ? list.filter((e) => e.member.toLowerCase().includes(memberFilter.toLowerCase()))
-    : list;
-
-  // sort by start time
-  return filtered.slice().sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
-}
-
-function normalizeSort(list) {
-  return list.slice().sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return toMinutes(a.start) - toMinutes(b.start);
-  });
-}
-
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function loadEvents() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  function eventsForDate(dateISO) {
+    return events.filter((ev) => ev.dateISO === dateISO);
   }
-}
 
-function saveEvents(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
-function getMemberFilter() {
-  return (els.filterMember.value || "").trim();
-}
-
-function toast(msg) {
-  els.toast.textContent = msg;
-  els.toast.classList.add("show");
-  window.clearTimeout(toast._t);
-  toast._t = window.setTimeout(() => els.toast.classList.remove("show"), 2200);
-}
-
-function cryptoRandomId() {
-  // simple unique id for delete actions
-  if (window.crypto?.getRandomValues) {
-    const arr = new Uint32Array(2);
-    window.crypto.getRandomValues(arr);
-    return `${arr[0].toString(16)}-${arr[1].toString(16)}`;
+  function changeMonth(delta) {
+    const d = new Date(viewYear, viewMonth + delta, 1);
+    viewYear = d.getFullYear();
+    viewMonth = d.getMonth();
+    renderAll();
   }
-  return String(Date.now()) + "-" + String(Math.random()).slice(2);
-}
 
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+  function goToday() {
+    const t = new Date();
+    viewYear = t.getFullYear();
+    viewMonth = t.getMonth();
+    selectedDateISO = toISODate(t);
+    if (dateEl) dateEl.value = selectedDateISO;
+    renderAll();
+  }
+
+  function setTodayLabel() {
+    if (!todayLabelEl) return;
+    todayLabelEl.textContent = `Today: ${toISODate(new Date())}`;
+  }
+
+  function loadEvents() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveEvents(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function toISODate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function fromISODate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function cryptoId() {
+    // Works in modern browsers; fallback included
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    return "id_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+})();
