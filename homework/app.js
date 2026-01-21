@@ -1,23 +1,50 @@
-/* Team Work Calendar (no backend)
-   - Month grid
-   - Add/Edit/Delete events
-   - Day details list
-   - Filter by owner name
-   - Invite link copies current month + selected date into URL
-   - Persists events in localStorage
+/* Team Work Calendar (from scratch)
+   Features:
+   - Month calendar view
+   - Events with selected participants (multi-member)
+   - Availability (busy) records per member (all-day or time range)
+   - Conflict detection: blocks adding an event if any selected participant is busy
+   - LocalStorage persistence
+   - Invite link: copies URL with month + selected day (view sharing only)
 */
 
 const TEAM_MEMBERS = [
-  { id: "mobin", name: "Mobin", role: "Owner", color: "#2f7cff" },
+  { id: "mobin", name: "Mobin", role: "Student", color: "#2f7cff" },
   { id: "anna", name: "Anna", role: "Product Owner", color: "#e879f9" },
   { id: "liam", name: "Liam", role: "Developer", color: "#22c55e" },
   { id: "sofia", name: "Sofia", role: "Developer", color: "#f59e0b" },
   { id: "noah", name: "Noah", role: "QA Engineer", color: "#60a5fa" },
 ];
 
-const STORAGE_KEY = "twc_events_v1";
+const STORAGE_EVENTS = "twc_events_v2";
+const STORAGE_BUSY = "twc_busy_v2";
 
 const els = {
+  // tabs
+  tabCalendar: document.getElementById("tabCalendar"),
+  tabAvailability: document.getElementById("tabAvailability"),
+  calendarPanel: document.getElementById("calendarPanel"),
+  availabilityPanel: document.getElementById("availabilityPanel"),
+
+  // calendar form
+  eventForm: document.getElementById("eventForm"),
+  editingId: document.getElementById("editingId"),
+  title: document.getElementById("title"),
+  date: document.getElementById("date"),
+  startTime: document.getElementById("startTime"),
+  endTime: document.getElementById("endTime"),
+  location: document.getElementById("location"),
+  notes: document.getElementById("notes"),
+  memberChecklist: document.getElementById("memberChecklist"),
+  clearEventsBtn: document.getElementById("clearEventsBtn"),
+  conflictBox: document.getElementById("conflictBox"),
+
+  // filters + selected day
+  nameFilter: document.getElementById("nameFilter"),
+  selectedDateLabel: document.getElementById("selectedDateLabel"),
+  dayEvents: document.getElementById("dayEvents"),
+
+  // calendar
   grid: document.getElementById("grid"),
   monthLabel: document.getElementById("monthLabel"),
   todayLabel: document.getElementById("todayLabel"),
@@ -26,105 +53,109 @@ const els = {
   todayBtn: document.getElementById("todayBtn"),
   inviteBtn: document.getElementById("inviteBtn"),
 
-  form: document.getElementById("eventForm"),
-  editingId: document.getElementById("editingId"),
-  title: document.getElementById("title"),
-  owner: document.getElementById("owner"),
-  location: document.getElementById("location"),
-  date: document.getElementById("date"),
-  startTime: document.getElementById("startTime"),
-  endTime: document.getElementById("endTime"),
-  notes: document.getElementById("notes"),
-  clearBtn: document.getElementById("clearBtn"),
-
-  ownerFilter: document.getElementById("ownerFilter"),
-  selectedDateLabel: document.getElementById("selectedDateLabel"),
-  dayEvents: document.getElementById("dayEvents"),
+  // availability form
+  busyForm: document.getElementById("busyForm"),
+  busyMember: document.getElementById("busyMember"),
+  busyDate: document.getElementById("busyDate"),
+  busyTimeRow: document.getElementById("busyTimeRow"),
+  busyStart: document.getElementById("busyStart"),
+  busyEnd: document.getElementById("busyEnd"),
+  busyReason: document.getElementById("busyReason"),
+  clearBusyBtn: document.getElementById("clearBusyBtn"),
+  busyMsg: document.getElementById("busyMsg"),
+  busyList: document.getElementById("busyList"),
 
   toast: document.getElementById("toast"),
 };
 
-let events = loadEvents();
-let viewDate = new Date();            // the month being shown
-let selectedISO = null;              // YYYY-MM-DD
-let ownerFilterText = "";
+let events = loadJson(STORAGE_EVENTS, []);
+let busy = loadJson(STORAGE_BUSY, []);
+let viewDate = new Date(); // month shown
+viewDate.setDate(1);
+let selectedISO = null;
+let nameFilterText = "";
 
-/* ---------- helpers ---------- */
+/* ---------------- helpers ---------------- */
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
+function pad2(n){ return String(n).padStart(2, "0"); }
+
+function toISODate(d){
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 }
 
-function toISODate(d) {
-  const y = d.getFullYear();
-  const m = pad2(d.getMonth() + 1);
-  const day = pad2(d.getDate());
-  return `${y}-${m}-${day}`;
+function parseISODate(iso){
+  const [y,m,d] = iso.split("-").map(Number);
+  return new Date(y, m-1, d);
 }
 
-function parseISODate(iso) {
-  // iso = YYYY-MM-DD (local)
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
+function formatMonthTitle(d){
+  return d.toLocaleDateString(undefined, { month:"long", year:"numeric" });
 }
 
-function sameMonth(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-}
-
-function formatMonthTitle(d) {
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
-function formatTodayLabel() {
-  const t = new Date();
-  return `Today: ${toISODate(t)}`;
-}
-
-function showToast(msg) {
+function showToast(msg){
   els.toast.textContent = msg;
   els.toast.classList.add("toast--show");
-  window.clearTimeout(showToast._t);
-  showToast._t = window.setTimeout(() => els.toast.classList.remove("toast--show"), 1600);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => els.toast.classList.remove("toast--show"), 1600);
 }
 
-function memberById(id) {
-  return TEAM_MEMBERS.find((m) => m.id === id) || TEAM_MEMBERS[0];
+function cryptoId(){
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "id_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-function safeCompareTime(a, b) {
-  // "HH:MM"
-  return a.localeCompare(b);
+function memberById(id){
+  return TEAM_MEMBERS.find(m => m.id === id) || TEAM_MEMBERS[0];
 }
 
-/* ---------- storage ---------- */
+function timeOverlap(aStart, aEnd, bStart, bEnd){
+  // "HH:MM" strings; overlap if ranges intersect (exclusive end)
+  return aStart < bEnd && bStart < aEnd;
+}
 
-function loadEvents() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data)) return [];
-    return data;
-  } catch {
-    return [];
+function getSelectedMemberIds(){
+  const ids = [];
+  els.memberChecklist.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb.checked) ids.push(cb.value);
+  });
+  return ids;
+}
+
+function setAlert(el, msg, kind){
+  el.hidden = !msg;
+  el.textContent = msg || "";
+  el.classList.remove("alert--warn", "alert--ok", "alert--bad");
+  if (kind) el.classList.add(kind);
+}
+
+/* ---------------- storage ---------------- */
+
+function loadJson(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  }catch{
+    return fallback;
   }
 }
 
-function saveEvents() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+function saveAll(){
+  localStorage.setItem(STORAGE_EVENTS, JSON.stringify(events));
+  localStorage.setItem(STORAGE_BUSY, JSON.stringify(busy));
 }
 
-/* ---------- URL invite state ---------- */
+/* ---------------- URL invite state ---------------- */
 
-function readURLState() {
+function readURLState(){
   const params = new URLSearchParams(location.search);
   const month = params.get("month"); // YYYY-MM
   const day = params.get("day");     // YYYY-MM-DD
 
   if (month && /^\d{4}-\d{2}$/.test(month)) {
     const [y, m] = month.split("-").map(Number);
-    viewDate = new Date(y, m - 1, 1);
+    viewDate = new Date(y, m-1, 1);
   }
 
   if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) {
@@ -132,75 +163,178 @@ function readURLState() {
   }
 }
 
-function buildInviteLink() {
+function buildInviteLink(){
   const y = viewDate.getFullYear();
-  const m = pad2(viewDate.getMonth() + 1);
-  const month = `${y}-${m}`;
-
+  const m = pad2(viewDate.getMonth()+1);
   const url = new URL(location.href);
-  url.searchParams.set("month", month);
+  url.searchParams.set("month", `${y}-${m}`);
   if (selectedISO) url.searchParams.set("day", selectedISO);
   else url.searchParams.delete("day");
   return url.toString();
 }
 
-/* ---------- rendering ---------- */
+/* ---------------- UI init ---------------- */
 
-function renderOwnerOptions() {
-  els.owner.innerHTML = "";
-  for (const m of TEAM_MEMBERS) {
+function initMemberChecklist(){
+  els.memberChecklist.innerHTML = "";
+  for (const m of TEAM_MEMBERS){
+    const wrap = document.createElement("label");
+    wrap.className = "check";
+    wrap.innerHTML = `
+      <input type="checkbox" value="${m.id}">
+      <div class="meta">
+        <div class="name">${m.name}</div>
+        <div class="role">${m.role}</div>
+      </div>
+    `;
+    els.memberChecklist.appendChild(wrap);
+  }
+}
+
+function initBusyMemberSelect(){
+  els.busyMember.innerHTML = "";
+  for (const m of TEAM_MEMBERS){
     const opt = document.createElement("option");
     opt.value = m.id;
     opt.textContent = `${m.name} — ${m.role}`;
-    els.owner.appendChild(opt);
+    els.busyMember.appendChild(opt);
   }
 }
 
-function eventsOnDay(iso) {
-  let list = events.filter((e) => e.date === iso);
+function initDefaults(){
+  readURLState();
 
-  if (ownerFilterText.trim()) {
-    const q = ownerFilterText.trim().toLowerCase();
-    list = list.filter((e) => {
-      const m = memberById(e.ownerId);
-      return m.name.toLowerCase().includes(q);
+  const today = new Date();
+  const todayISO = toISODate(today);
+
+  if (!selectedISO) selectedISO = todayISO;
+
+  // keep view month aligned to selected day
+  const sd = parseISODate(selectedISO);
+  viewDate = new Date(sd.getFullYear(), sd.getMonth(), 1);
+
+  els.date.value = selectedISO;
+  els.busyDate.value = selectedISO;
+
+  // default times
+  els.startTime.value = "09:00";
+  els.endTime.value = "10:00";
+
+  // default member selection: first member checked
+  const firstCb = els.memberChecklist.querySelector('input[type="checkbox"]');
+  if (firstCb) firstCb.checked = true;
+
+  els.todayLabel.textContent = `Today: ${todayISO}`;
+}
+
+/* ---------------- tabs ---------------- */
+
+function showTab(which){
+  const isCal = which === "calendar";
+  els.tabCalendar.classList.toggle("tab--active", isCal);
+  els.tabAvailability.classList.toggle("tab--active", !isCal);
+  els.calendarPanel.classList.toggle("section--active", isCal);
+  els.availabilityPanel.classList.toggle("section--active", !isCal);
+}
+
+/* ---------------- availability (busy) ---------------- */
+
+function getBusyForMemberOnDate(memberId, dateISO){
+  return busy.filter(b => b.memberId === memberId && b.date === dateISO);
+}
+
+function busyConflictsWithEvent(memberId, dateISO, startTime, endTime){
+  const records = getBusyForMemberOnDate(memberId, dateISO);
+  for (const r of records){
+    if (r.type === "allday") return true;
+    if (r.type === "timerange" && timeOverlap(startTime, endTime, r.startTime, r.endTime)) return true;
+  }
+  return false;
+}
+
+function renderBusyList(){
+  els.busyList.innerHTML = "";
+
+  if (busy.length === 0){
+    els.busyList.innerHTML = `<p class="muted">No busy records yet.</p>`;
+    return;
+  }
+
+  // newest first
+  const sorted = [...busy].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+
+  for (const r of sorted){
+    const m = memberById(r.memberId);
+    const card = document.createElement("div");
+    card.className = "busyitem";
+
+    const title = r.type === "allday"
+      ? `${m.name} is busy (All day)`
+      : `${m.name} is busy (${r.startTime}–${r.endTime})`;
+
+    card.innerHTML = `
+      <div class="busyitem__top">
+        <div class="busyitem__title">${title}</div>
+        <button class="btn btn--danger" type="button" data-del="${r.id}">Delete</button>
+      </div>
+      <div class="busyitem__meta">
+        <span class="pill"><span class="dot" style="background:${m.color}"></span>${m.name}</span>
+        <span class="pill">Date: ${r.date}</span>
+        ${r.reason ? `<span class="pill">Reason: ${escapeHtml(r.reason)}</span>` : ``}
+      </div>
+    `;
+
+    card.querySelector("[data-del]").addEventListener("click", () => {
+      busy = busy.filter(x => x.id !== r.id);
+      saveAll();
+      renderBusyList();
+      showToast("Busy record deleted.");
+    });
+
+    els.busyList.appendChild(card);
+  }
+}
+
+/* ---------------- events (calendar) ---------------- */
+
+function eventsOnDay(dateISO){
+  let list = events.filter(e => e.date === dateISO);
+
+  if (nameFilterText.trim()){
+    const q = nameFilterText.trim().toLowerCase();
+    list = list.filter(e => {
+      return (e.participants || []).some(pid => memberById(pid).name.toLowerCase().includes(q));
     });
   }
 
-  list.sort((a, b) => safeCompareTime(a.startTime, b.startTime));
+  list.sort((a,b) => a.startTime.localeCompare(b.startTime));
   return list;
 }
 
-function renderMonth() {
+function renderMonth(){
   els.monthLabel.textContent = formatMonthTitle(viewDate);
-  els.todayLabel.textContent = formatTodayLabel();
+  els.todayLabel.textContent = `Today: ${toISODate(new Date())}`;
 
   const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
-  const last = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+  const last = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 0);
 
-  // Convert JS Sunday-based to Monday-based index:
-  // JS: 0 Sun..6 Sat => Mon-based: 0 Mon..6 Sun
-  const startDow = (first.getDay() + 6) % 7; // 0..6
-  const daysInMonth = last.getDate();
-
-  // We render 42 cells (6 weeks) for a stable grid.
-  els.grid.innerHTML = "";
-
-  // Determine the date shown in first cell
+  // Monday-based
+  const startDow = (first.getDay() + 6) % 7;
   const gridStart = new Date(first);
   gridStart.setDate(first.getDate() - startDow);
 
-  for (let i = 0; i < 42; i++) {
+  els.grid.innerHTML = "";
+
+  for (let i=0; i<42; i++){
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
 
     const iso = toISODate(d);
-    const inThisMonth = d.getMonth() === viewDate.getMonth();
+    const inMonth = d.getMonth() === viewDate.getMonth();
     const isSelected = selectedISO === iso;
 
     const cell = document.createElement("div");
-    cell.className = "day" + (inThisMonth ? "" : " day--muted") + (isSelected ? " day--selected" : "");
-    cell.setAttribute("role", "gridcell");
+    cell.className = "day" + (inMonth ? "" : " day--muted") + (isSelected ? " day--selected" : "");
     cell.dataset.iso = iso;
 
     const num = document.createElement("div");
@@ -209,7 +343,7 @@ function renderMonth() {
     cell.appendChild(num);
 
     const count = eventsOnDay(iso).length;
-    if (count > 0) {
+    if (count > 0){
       const badge = document.createElement("div");
       badge.className = "badge";
       badge.textContent = `${count} event${count === 1 ? "" : "s"}`;
@@ -218,10 +352,8 @@ function renderMonth() {
 
     cell.addEventListener("click", () => {
       selectedISO = iso;
-
-      // Keep form date in sync when you click a day
       els.date.value = iso;
-
+      els.busyDate.value = iso;
       renderMonth();
       renderSelectedDay();
     });
@@ -230,8 +362,8 @@ function renderMonth() {
   }
 }
 
-function renderSelectedDay() {
-  if (!selectedISO) {
+function renderSelectedDay(){
+  if (!selectedISO){
     els.selectedDateLabel.textContent = "—";
     els.dayEvents.innerHTML = `<p class="muted">Click a day to see events.</p>`;
     return;
@@ -239,260 +371,291 @@ function renderSelectedDay() {
 
   const d = parseISODate(selectedISO);
   els.selectedDateLabel.textContent = d.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
+    weekday:"long", year:"numeric", month:"short", day:"2-digit"
   });
 
   const list = eventsOnDay(selectedISO);
-  if (list.length === 0) {
+  if (list.length === 0){
     els.dayEvents.innerHTML = `<p class="muted">No events for this day.</p>`;
     return;
   }
 
   els.dayEvents.innerHTML = "";
-  for (const e of list) {
-    const m = memberById(e.ownerId);
+  for (const e of list){
+    const parts = (e.participants || []).map(pid => memberById(pid));
+
+    const participantsPills = parts.map(m => `
+      <span class="pill"><span class="dot" style="background:${m.color}"></span>${m.name}</span>
+    `).join("");
 
     const card = document.createElement("div");
     card.className = "eventcard";
+    card.innerHTML = `
+      <div class="eventcard__title">${escapeHtml(e.title)}</div>
+      <div class="eventcard__meta">
+        <span class="pill">Time: ${e.startTime}–${e.endTime}</span>
+        ${participantsPills}
+        ${e.location ? `<span class="pill">Location: ${escapeHtml(e.location)}</span>` : ``}
+      </div>
+      ${e.notes ? `<div class="hint" style="margin-top:8px">${escapeHtml(e.notes)}</div>` : ``}
+      <div class="eventcard__actions">
+        <button class="btn btn--ghost" type="button" data-edit="${e.id}">Edit</button>
+        <button class="btn btn--danger" type="button" data-del="${e.id}">Delete</button>
+      </div>
+    `;
 
-    const title = document.createElement("div");
-    title.className = "eventcard__title";
-    title.textContent = e.title;
-    card.appendChild(title);
+    card.querySelector("[data-del]").addEventListener("click", () => {
+      events = events.filter(x => x.id !== e.id);
+      saveAll();
+      showToast("Event deleted.");
+      renderMonth();
+      renderSelectedDay();
+    });
 
-    const meta = document.createElement("div");
-    meta.className = "eventcard__meta";
-
-    meta.appendChild(makePill("Time", `${e.startTime}–${e.endTime}`));
-    meta.appendChild(makeOwnerPill(m));
-    if (e.location) meta.appendChild(makePill("Location", e.location));
-    card.appendChild(meta);
-
-    if (e.notes) {
-      const notes = document.createElement("div");
-      notes.className = "hint";
-      notes.style.marginTop = "8px";
-      notes.textContent = e.notes;
-      card.appendChild(notes);
-    }
-
-    const actions = document.createElement("div");
-    actions.className = "eventcard__actions";
-
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "btn btn--ghost";
-    editBtn.textContent = "Edit";
-    editBtn.addEventListener("click", () => loadEventIntoForm(e.id));
-
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "btn btn--danger";
-    delBtn.textContent = "Delete";
-    delBtn.addEventListener("click", () => deleteEvent(e.id));
-
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    card.appendChild(actions);
+    card.querySelector("[data-edit]").addEventListener("click", () => {
+      loadEventIntoForm(e.id);
+    });
 
     els.dayEvents.appendChild(card);
   }
 }
 
-function makePill(label, value) {
-  const pill = document.createElement("span");
-  pill.className = "pill";
-  pill.textContent = `${label}: ${value}`;
-  return pill;
-}
-
-function makeOwnerPill(member) {
-  const pill = document.createElement("span");
-  pill.className = "pill";
-
-  const dot = document.createElement("span");
-  dot.className = "dot";
-  dot.style.background = member.color;
-  pill.appendChild(dot);
-
-  const txt = document.createElement("span");
-  txt.textContent = member.name;
-  pill.appendChild(txt);
-
-  return pill;
-}
-
-/* ---------- CRUD ---------- */
-
-function validateForm() {
-  const title = els.title.value.trim();
-  const date = els.date.value;
-  const start = els.startTime.value;
-  const end = els.endTime.value;
-  const ownerId = els.owner.value;
-
-  if (!title) return { ok: false, msg: "Title is required." };
-  if (!ownerId) return { ok: false, msg: "Owner is required." };
-  if (!date) return { ok: false, msg: "Date is required." };
-  if (!start) return { ok: false, msg: "Start time is required." };
-  if (!end) return { ok: false, msg: "End time is required." };
-  if (end <= start) return { ok: false, msg: "End time must be after start time." };
-
-  return { ok: true };
-}
-
-function upsertEvent(evt) {
-  const existingIndex = events.findIndex((e) => e.id === evt.id);
-  if (existingIndex >= 0) events[existingIndex] = evt;
-  else events.push(evt);
-
-  saveEvents();
-}
-
-function deleteEvent(id) {
-  events = events.filter((e) => e.id !== id);
-  saveEvents();
-
-  showToast("Event deleted.");
-  renderMonth();
-  renderSelectedDay();
-}
-
-function resetForm() {
-  els.form.reset();
-  els.editingId.value = "";
-
-  // Keep date aligned to selected day or today
-  if (selectedISO) els.date.value = selectedISO;
-  else els.date.value = toISODate(new Date());
-}
-
-function loadEventIntoForm(id) {
-  const e = events.find((x) => x.id === id);
+function loadEventIntoForm(id){
+  const e = events.find(x => x.id === id);
   if (!e) return;
 
   els.editingId.value = e.id;
   els.title.value = e.title;
-  els.owner.value = e.ownerId;
-  els.location.value = e.location || "";
   els.date.value = e.date;
   els.startTime.value = e.startTime;
   els.endTime.value = e.endTime;
+  els.location.value = e.location || "";
   els.notes.value = e.notes || "";
 
-  // focus title so it’s obvious edit mode
-  els.title.focus();
-  showToast("Editing mode: update and press Add to calendar.");
+  // set checkboxes
+  const set = new Set(e.participants || []);
+  els.memberChecklist.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.checked = set.has(cb.value);
+  });
+
+  showToast("Editing: update and press Add.");
 }
 
-/* ---------- init + events ---------- */
+/* ---------------- validation ---------------- */
 
-function initDefaults() {
-  renderOwnerOptions();
+function validateEventForm(){
+  const title = els.title.value.trim();
+  const date = els.date.value;
+  const start = els.startTime.value;
+  const end = els.endTime.value;
+  const participants = getSelectedMemberIds();
 
-  // Default date = today; selected = from URL or today
-  const todayISO = toISODate(new Date());
+  if (!title) return { ok:false, msg:"Title is required." };
+  if (!date) return { ok:false, msg:"Date is required." };
+  if (!start) return { ok:false, msg:"Start time is required." };
+  if (!end) return { ok:false, msg:"End time is required." };
+  if (end <= start) return { ok:false, msg:"End time must be after start time." };
+  if (participants.length === 0) return { ok:false, msg:"Select at least 1 participant." };
 
-  if (!selectedISO) selectedISO = todayISO;
-
-  // Ensure the selected day is visible month
-  const selectedDate = parseISODate(selectedISO);
-  if (!sameMonth(viewDate, selectedDate)) viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-
-  els.date.value = selectedISO;
-  els.owner.value = TEAM_MEMBERS[0].id;
-}
-
-els.form.addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  const v = validateForm();
-  if (!v.ok) {
-    showToast(v.msg);
-    return;
+  // conflict check against busy records
+  const conflicts = [];
+  for (const pid of participants){
+    if (busyConflictsWithEvent(pid, date, start, end)){
+      conflicts.push(memberById(pid).name);
+    }
+  }
+  if (conflicts.length > 0){
+    return { ok:false, msg:`Busy conflict: ${conflicts.join(", ")} not available.` };
   }
 
-  const id = els.editingId.value || crypto.randomUUID();
+  return { ok:true };
+}
 
-  const evt = {
-    id,
-    title: els.title.value.trim(),
-    ownerId: els.owner.value,
-    location: els.location.value.trim(),
-    date: els.date.value,
-    startTime: els.startTime.value,
-    endTime: els.endTime.value,
-    notes: els.notes.value.trim(),
-    createdAt: Date.now(),
-  };
+/* ---------------- escape ---------------- */
 
-  upsertEvent(evt);
+function escapeHtml(s){
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
-  // Select the event date and jump view there (useful)
-  selectedISO = evt.date;
-  const sd = parseISODate(selectedISO);
-  viewDate = new Date(sd.getFullYear(), sd.getMonth(), 1);
+/* ---------------- event handlers ---------------- */
 
-  showToast(els.editingId.value ? "Event updated." : "Event added.");
+els.tabCalendar.addEventListener("click", () => showTab("calendar"));
+els.tabAvailability.addEventListener("click", () => showTab("availability"));
 
-  resetForm();
-  renderMonth();
-  renderSelectedDay();
-});
-
-els.clearBtn.addEventListener("click", () => {
-  const ok = confirm("Delete ALL events stored in this browser?");
-  if (!ok) return;
-
-  events = [];
-  saveEvents();
-  showToast("All events cleared.");
-  renderMonth();
-  renderSelectedDay();
-});
-
-els.ownerFilter.addEventListener("input", () => {
-  ownerFilterText = els.ownerFilter.value;
+els.nameFilter.addEventListener("input", () => {
+  nameFilterText = els.nameFilter.value;
   renderMonth();
   renderSelectedDay();
 });
 
 els.prevMonth.addEventListener("click", () => {
-  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
   renderMonth();
 });
 
 els.nextMonth.addEventListener("click", () => {
-  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
   renderMonth();
 });
 
 els.todayBtn.addEventListener("click", () => {
   const t = new Date();
-  viewDate = new Date(t.getFullYear(), t.getMonth(), 1);
   selectedISO = toISODate(t);
+  viewDate = new Date(t.getFullYear(), t.getMonth(), 1);
   els.date.value = selectedISO;
+  els.busyDate.value = selectedISO;
   renderMonth();
   renderSelectedDay();
 });
 
 els.inviteBtn.addEventListener("click", async () => {
   const link = buildInviteLink();
-  try {
+  try{
     await navigator.clipboard.writeText(link);
     showToast("Invite link copied.");
-  } catch {
-    // Fallback: prompt
-    window.prompt("Copy this invite link:", link);
+  }catch{
+    window.prompt("Copy invite link:", link);
   }
 });
 
-(function boot() {
-  readURLState();
-  initDefaults();
+els.clearEventsBtn.addEventListener("click", () => {
+  const ok = confirm("Delete ALL events stored in this browser?");
+  if (!ok) return;
+  events = [];
+  saveAll();
+  showToast("Events cleared.");
   renderMonth();
   renderSelectedDay();
+});
+
+els.eventForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const v = validateEventForm();
+  setAlert(els.conflictBox, v.ok ? "" : v.msg, v.ok ? "" : "alert--bad");
+  if (!v.ok) return;
+
+  const id = els.editingId.value || cryptoId();
+
+  const evt = {
+    id,
+    title: els.title.value.trim(),
+    date: els.date.value,
+    startTime: els.startTime.value,
+    endTime: els.endTime.value,
+    location: els.location.value.trim(),
+    notes: els.notes.value.trim(),
+    participants: getSelectedMemberIds(),
+    createdAt: Date.now(),
+  };
+
+  const idx = events.findIndex(x => x.id === id);
+  if (idx >= 0) events[idx] = evt;
+  else events.push(evt);
+
+  saveAll();
+
+  selectedISO = evt.date;
+  const sd = parseISODate(selectedISO);
+  viewDate = new Date(sd.getFullYear(), sd.getMonth(), 1);
+
+  // reset edit mode but keep date
+  els.editingId.value = "";
+  els.title.value = "";
+  els.location.value = "";
+  els.notes.value = "";
+
+  showToast(idx >= 0 ? "Event updated." : "Event added.");
+  setAlert(els.conflictBox, "", "");
+
+  renderMonth();
+  renderSelectedDay();
+});
+
+/* ---- availability UI ---- */
+
+els.busyForm.addEventListener("change", (e) => {
+  if (e.target && e.target.name === "busyType"){
+    const type = document.querySelector('input[name="busyType"]:checked')?.value;
+    els.busyTimeRow.hidden = type !== "timerange";
+  }
+});
+
+els.clearBusyBtn.addEventListener("click", () => {
+  const ok = confirm("Delete ALL busy records stored in this browser?");
+  if (!ok) return;
+  busy = [];
+  saveAll();
+  showToast("Busy records cleared.");
+  renderBusyList();
+});
+
+els.busyForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const memberId = els.busyMember.value;
+  const date = els.busyDate.value;
+  const type = document.querySelector('input[name="busyType"]:checked')?.value || "allday";
+  const reason = els.busyReason.value.trim();
+
+  if (!memberId || !date){
+    setAlert(els.busyMsg, "Member and date are required.", "alert--bad");
+    return;
+  }
+
+  if (type === "timerange"){
+    const s = els.busyStart.value;
+    const en = els.busyEnd.value;
+    if (!s || !en){
+      setAlert(els.busyMsg, "Start and end time are required.", "alert--bad");
+      return;
+    }
+    if (en <= s){
+      setAlert(els.busyMsg, "End time must be after start time.", "alert--bad");
+      return;
+    }
+  }
+
+  const rec = {
+    id: cryptoId(),
+    memberId,
+    date,
+    type,
+    startTime: type === "timerange" ? els.busyStart.value : "",
+    endTime: type === "timerange" ? els.busyEnd.value : "",
+    reason,
+    createdAt: Date.now(),
+  };
+
+  busy.push(rec);
+  saveAll();
+
+  setAlert(els.busyMsg, "Busy record added.", "alert--ok");
+  showToast("Busy record saved.");
+  els.busyReason.value = "";
+
+  renderBusyList();
+
+  // This matters: new busy info changes conflict results
+  renderMonth();
+  renderSelectedDay();
+});
+
+/* ---------------- boot ---------------- */
+
+(function boot(){
+  initMemberChecklist();
+  initBusyMemberSelect();
+  initDefaults();
+
+  showTab("calendar");
+
+  renderMonth();
+  renderSelectedDay();
+  renderBusyList();
 })();

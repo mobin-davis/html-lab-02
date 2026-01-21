@@ -9,107 +9,177 @@
 
   <body>
     <header class="topbar">
-      <div class="topbar__left">
-        <div class="appmark" aria-hidden="true"></div>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
         <div>
           <h1 class="title">Team Work Calendar</h1>
-          <p class="subtitle">Plan team tasks with accurate start/end time and a clean month view.</p>
+          <p class="subtitle">Meetings with selected members + busy-day availability tracking</p>
         </div>
       </div>
 
-      <div class="topbar__right">
+      <div class="top-actions">
         <button id="inviteBtn" class="btn btn--ghost" type="button">Invite (copy link)</button>
         <button id="todayBtn" class="btn btn--primary" type="button">Today</button>
       </div>
     </header>
 
+    <nav class="tabs" aria-label="Calendar sections">
+      <button id="tabCalendar" class="tab tab--active" type="button">Calendar</button>
+      <button id="tabAvailability" class="tab" type="button">Availability</button>
+    </nav>
+
     <main class="layout">
-      <!-- Left panel: create event + filters -->
+      <!-- LEFT: Forms + Selected Day -->
       <aside class="panel">
-        <h2 class="panel__title">Add schedule item</h2>
+        <!-- Calendar Form -->
+        <section id="calendarPanel" class="section section--active">
+          <h2 class="panel__title">Add meeting</h2>
 
-        <form id="eventForm" class="form" novalidate>
-          <div class="form__row">
-            <label class="label" for="title">Title</label>
-            <input id="title" name="title" class="input" type="text" placeholder="e.g., Sprint planning" required />
-            <p class="hint" id="titleHint">Required</p>
-          </div>
-
-          <div class="form__grid2">
+          <form id="eventForm" class="form" novalidate>
             <div class="form__row">
-              <label class="label" for="owner">Owner</label>
-              <select id="owner" name="owner" class="select" required></select>
-              <p class="hint">Who owns this item</p>
+              <label class="label" for="title">Title</label>
+              <input id="title" class="input" type="text" placeholder="e.g., Sprint planning" required />
+              <p class="hint">Required</p>
+            </div>
+
+            <div class="form__grid2">
+              <div class="form__row">
+                <label class="label" for="date">Date</label>
+                <input id="date" class="input" type="date" required />
+                <p class="hint">Pick a day</p>
+              </div>
+
+              <div class="form__row">
+                <label class="label" for="location">Location</label>
+                <input id="location" class="input" type="text" placeholder="Room / Online" />
+                <p class="hint">Optional</p>
+              </div>
+            </div>
+
+            <div class="form__grid2">
+              <div class="form__row">
+                <label class="label" for="startTime">Start time</label>
+                <input id="startTime" class="input" type="time" required />
+                <p class="hint">24h format</p>
+              </div>
+
+              <div class="form__row">
+                <label class="label" for="endTime">End time</label>
+                <input id="endTime" class="input" type="time" required />
+                <p class="hint">Must be after start</p>
+              </div>
             </div>
 
             <div class="form__row">
-              <label class="label" for="location">Location</label>
-              <input id="location" name="location" class="input" type="text" placeholder="e.g., Room 201 / Discord" />
-              <p class="hint">Optional</p>
-            </div>
-          </div>
-
-          <div class="form__grid3">
-            <div class="form__row">
-              <label class="label" for="date">Date</label>
-              <input id="date" name="date" class="input" type="date" required />
-              <p class="hint">Pick a day</p>
+              <label class="label">Participants (select required members)</label>
+              <div id="memberChecklist" class="checklist" aria-label="Team members checklist"></div>
+              <p class="hint">At least 1 member must be selected</p>
             </div>
 
             <div class="form__row">
-              <label class="label" for="startTime">Start time</label>
-              <input id="startTime" name="startTime" class="input" type="time" required />
-              <p class="hint">24h format, e.g., 09:30</p>
+              <label class="label" for="notes">Notes</label>
+              <textarea id="notes" class="textarea" rows="3" placeholder="Optional details..."></textarea>
+            </div>
+
+            <div class="form__actions">
+              <button class="btn btn--primary" type="submit">Add</button>
+              <button id="clearEventsBtn" class="btn btn--danger" type="button">Clear events</button>
+            </div>
+
+            <input type="hidden" id="editingId" value="" />
+
+            <div class="alertline">
+              <div id="conflictBox" class="alert" hidden></div>
+            </div>
+          </form>
+
+          <hr class="divider" />
+
+          <h3 class="panel__subtitle">Filter (by participant name)</h3>
+          <input id="nameFilter" class="input" type="text" placeholder="Type a name to filter events..." />
+
+          <div class="selected">
+            <div class="selected__head">
+              <h3 class="panel__subtitle">Selected day</h3>
+              <p id="selectedDateLabel" class="selected__date">—</p>
+            </div>
+
+            <div id="dayEvents" class="dayevents">
+              <p class="muted">Click a day to see events.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Availability Form -->
+        <section id="availabilityPanel" class="section">
+          <h2 class="panel__title">Record busy time</h2>
+
+          <form id="busyForm" class="form" novalidate>
+            <div class="form__row">
+              <label class="label" for="busyMember">Member</label>
+              <select id="busyMember" class="select" required></select>
+            </div>
+
+            <div class="form__grid2">
+              <div class="form__row">
+                <label class="label" for="busyDate">Date</label>
+                <input id="busyDate" class="input" type="date" required />
+              </div>
+
+              <div class="form__row">
+                <label class="label">Busy type</label>
+                <div class="radio-row">
+                  <label class="radio">
+                    <input type="radio" name="busyType" value="allday" checked />
+                    <span>All day</span>
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="busyType" value="timerange" />
+                    <span>Time range</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div id="busyTimeRow" class="form__grid2" hidden>
+              <div class="form__row">
+                <label class="label" for="busyStart">Start</label>
+                <input id="busyStart" class="input" type="time" />
+              </div>
+              <div class="form__row">
+                <label class="label" for="busyEnd">End</label>
+                <input id="busyEnd" class="input" type="time" />
+              </div>
             </div>
 
             <div class="form__row">
-              <label class="label" for="endTime">End time</label>
-              <input id="endTime" name="endTime" class="input" type="time" required />
-              <p class="hint">Must be after start time</p>
+              <label class="label" for="busyReason">Reason</label>
+              <input id="busyReason" class="input" type="text" placeholder="Optional (e.g., class, work shift)" />
             </div>
-          </div>
 
-          <div class="form__row">
-            <label class="label" for="notes">Notes</label>
-            <textarea id="notes" name="notes" class="textarea" rows="3" placeholder="Optional details..."></textarea>
-          </div>
+            <div class="form__actions">
+              <button class="btn btn--primary" type="submit">Add busy</button>
+              <button id="clearBusyBtn" class="btn btn--danger" type="button">Clear busy records</button>
+            </div>
 
-          <div class="form__actions">
-            <button id="addBtn" class="btn btn--primary" type="submit">Add to calendar</button>
-            <button id="clearBtn" class="btn btn--danger" type="button">Clear all</button>
-          </div>
+            <div class="alertline">
+              <div id="busyMsg" class="alert" hidden></div>
+            </div>
+          </form>
 
-          <input type="hidden" id="editingId" value="" />
-          <p class="smallprint">
-            Saved locally in your browser (localStorage). Works on GitHub Pages.
-          </p>
-        </form>
+          <hr class="divider" />
 
-        <hr class="divider" />
-
-        <h3 class="panel__subtitle">Filter by owner</h3>
-        <input id="ownerFilter" class="input" type="text" placeholder="Type a name (optional)" />
-
-        <div class="selected">
-          <div class="selected__head">
-            <h3 class="panel__subtitle">Selected day</h3>
-            <p id="selectedDateLabel" class="selected__date">—</p>
-          </div>
-
-          <div id="dayEvents" class="dayevents">
-            <p class="muted">Click a day to see events.</p>
-          </div>
-        </div>
+          <h3 class="panel__subtitle">Busy records</h3>
+          <div id="busyList" class="busylist"></div>
+        </section>
       </aside>
 
-      <!-- Right panel: month view -->
+      <!-- RIGHT: Month view -->
       <section class="calendar">
         <div class="calendar__head">
-          <div class="calendar__meta">
-            <p class="calendar__hint">
-              Click a day to see events. Times are shown as HH:MM–HH:MM.
-            </p>
-          </div>
+          <p class="calendar__hint">
+            Click a day. Events show participants and time. Scheduling checks busy conflicts for selected members.
+          </p>
 
           <div class="calendar__nav">
             <button id="prevMonth" class="iconbtn" type="button" aria-label="Previous month">◀</button>
@@ -129,7 +199,6 @@
       </section>
     </main>
 
-    <!-- Toast -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
