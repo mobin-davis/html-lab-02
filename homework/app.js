@@ -9,7 +9,7 @@
 */
 
 const TEAM_MEMBERS = [
-  { id: "mobin", name: "Mobin", role: "Student", color: "#2f7cff" },
+  { id: "mobin", name: "Mobin", role: "Intern", color: "#2f7cff" },
   { id: "anna", name: "Anna", role: "Product Owner", color: "#e879f9" },
   { id: "liam", name: "Liam", role: "Developer", color: "#22c55e" },
   { id: "sofia", name: "Sofia", role: "Developer", color: "#f59e0b" },
